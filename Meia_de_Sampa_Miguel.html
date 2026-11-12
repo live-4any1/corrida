@@ -39,12 +39,12 @@
   .video-acoes{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:12px;color:var(--suave)}
   .btn{display:inline-block;background:#1d2c58;color:var(--texto);text-decoration:none;border:0;border-radius:10px;padding:7px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
   .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--borda)}
-  .stat{background:var(--card);padding:12px 14px}
-  .stat .rot{font-size:11px;color:var(--suave);font-weight:600;letter-spacing:.8px;text-transform:uppercase}
-  .stat .val{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:28px;margin-top:2px;line-height:1.1}
-  .stat .val small{font-size:13px;color:var(--suave);font-weight:500;margin-left:3px}
+  .stat{background:var(--card);padding:8px 12px}
+  .stat .rot{font-size:10px;color:var(--suave);font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+  .stat .val{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:21px;margin-top:2px;line-height:1.1}
+  .stat .val small{font-size:11px;color:var(--suave);font-weight:500;margin-left:3px}
   .stat.fc{grid-column:span 2;display:flex;align-items:center;justify-content:space-between}
-  .stat.fc .val{font-size:46px;color:var(--vivo)}
+  .stat.fc .val{font-size:32px;color:var(--vivo)}
   .coracao{display:inline-block;animation:bate 1s infinite}
   @keyframes bate{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}}
   .zonas{display:flex;gap:4px;margin-top:8px}
@@ -98,7 +98,7 @@
           </div>
           <div style="text-align:right">
             <div class="rot">Média / Máx</div>
-            <div class="val" style="font-size:20px"><span id="fcMedia">--</span> / <span id="fcMax">--</span></div>
+            <div class="val" style="font-size:16px"><span id="fcMedia">--</span> / <span id="fcMax">--</span></div>
           </div>
         </div>
         <div class="stat"><div class="rot">Tempo</div><div class="val" id="tempo">0:00</div></div>
@@ -112,10 +112,6 @@
   </div>
 
   <div class="grid" style="margin-top:12px">
-    <div class="card">
-      <h2>Percurso <button class="btn" id="centralizar">Seguir corredor</button></h2>
-      <div id="mapa"></div>
-    </div>
 
     <div class="card">
       <h2>Parciais por km</h2>
@@ -123,6 +119,11 @@
         <thead><tr><th>Km</th><th>Ritmo</th><th>FC</th><th></th></tr></thead>
         <tbody id="voltas"><tr><td colspan="4" style="color:var(--suave)">Nenhum km completo ainda</td></tr></tbody>
       </table>
+    </div>
+
+    <div class="card">
+      <h2>Percurso <button class="btn" id="centralizar">Seguir corredor</button></h2>
+      <div id="mapa"></div>
     </div>
   </div>
 
@@ -135,7 +136,7 @@
 //  CONFIGURAÇÃO — edite só estas linhas
 // =====================================================================
 const CONFIG = {
-  NOME: "Corrida ao vivo",                 // aparece no topo da página
+  NOME: "Meia de Sampa · Equipe 4any1",                 // aparece no topo da página
   FIREBASE_URL: "https://garmin-81aab-default-rtdb.firebaseio.com",
   FULLCAM_LINK: "https://cloud.fullcam.me/#/camera?watch=MTE2ODk0MQ==&period=bGl2ZQ==&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BsYXRmb3JtLmZ1bGxjYW0ubWUiLCJzdWIiOiI1OGYyNjRiZC1lOGZlLTQwYTMtYTk5Ny0yZDg2NTQ2N2E4NzMiLCJqaXQiOiIyZWI4YzNjNC03NmU3LTQ0N2YtYTlmMS0wYTIxMWIzYmFjNDgiLCJleHAiOjE3OTQ1MzMyMjIsInNjb3BlIjpbImNhbWVyYTpyZWFkIl19.UHMssbk8axYd-7H3KeH4EAHbcEUtIN3gEzu8QI-6Zaw",                        // link de compartilhamento do FullCam (entre as aspas)
   VIDEO_ZOOM: 1.13,                          // ajuste do vídeo (abra a página com #ajuste no fim do link)
