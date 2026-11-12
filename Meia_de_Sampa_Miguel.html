@@ -29,8 +29,12 @@
   .grid{display:grid;gap:12px}
   @media(min-width:900px){.grid.topo{grid-template-columns:1.35fr 1fr}}
   .card{background:var(--card);border:1px solid var(--borda);border-radius:16px;overflow:hidden}
-  .video{position:relative;aspect-ratio:16/9;background:#000}
-  .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .video{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden}
+  #ajuste{display:none;padding:10px 12px;font-size:12px;color:var(--suave);border-top:1px solid var(--borda)}
+  #ajuste label{display:flex;align-items:center;gap:8px;margin:6px 0}
+  #ajuste input{flex:1}
+  #ajuste code{color:var(--amarelo);font-size:13px}
+  .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;transform-origin:50% 50%}
   .video .vazio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--suave);font-size:14px;text-align:center;padding:20px}
   .video-acoes{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:12px;color:var(--suave)}
   .btn{display:inline-block;background:#1d2c58;color:var(--texto);text-decoration:none;border:0;border-radius:10px;padding:7px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
@@ -73,6 +77,14 @@
       <div class="video-acoes">
         <span>Câmera ao vivo</span>
         <a class="btn" id="abrirVideo" href="#" target="_blank" rel="noopener">Abrir vídeo em tela cheia ↗</a>
+      </div>
+      <div id="ajuste">
+        <b>Ajuste do vídeo</b> — mexa até o vídeo ficar centralizado:
+        <label>Zoom <input type="range" id="ajZ" min="1" max="3" step="0.05"></label>
+        <label>Horizontal <input type="range" id="ajX" min="-60" max="60" step="1"></label>
+        <label>Vertical <input type="range" id="ajY" min="-60" max="60" step="1"></label>
+        <label>Formato <select id="ajP"><option>16/9</option><option>4/3</option><option>1/1</option><option>9/16</option></select></label>
+        Me mande estes números: <code id="ajTxt"></code>
       </div>
     </div>
 
@@ -126,6 +138,10 @@ const CONFIG = {
   NOME: "Corrida ao vivo",                 // aparece no topo da página
   FIREBASE_URL: "https://garmin-81aab-default-rtdb.firebaseio.com",
   FULLCAM_LINK: "https://cloud.fullcam.me/#/camera?watch=MTE2ODk0MQ==&period=bGl2ZQ==&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BsYXRmb3JtLmZ1bGxjYW0ubWUiLCJzdWIiOiI1OGYyNjRiZC1lOGZlLTQwYTMtYTk5Ny0yZDg2NTQ2N2E4NzMiLCJqaXQiOiIyZWI4YzNjNC03NmU3LTQ0N2YtYTlmMS0wYTIxMWIzYmFjNDgiLCJleHAiOjE3OTQ1MzMyMjIsInNjb3BlIjpbImNhbWVyYTpyZWFkIl19.UHMssbk8axYd-7H3KeH4EAHbcEUtIN3gEzu8QI-6Zaw",                        // link de compartilhamento do FullCam (entre as aspas)
+  VIDEO_ZOOM: 1,                           // ajuste do vídeo (abra a página com #ajuste no fim do link)
+  VIDEO_X: 0,
+  VIDEO_Y: 0,
+  VIDEO_FORMATO: "16/9",
   FC_MAXIMA: 190,                          // sua FC máxima, para colorir as zonas
   MAPBOX_TOKEN: "pk.eyJ1IjoibWlndWVsZHVyYW50ZSIsImEiOiJjbXZ4NW03YzEwMTQzMnhxYnl2d2Iyd2F6In0.wXIl0nNB6JybhoaQz_ohOg"  // chave pública do mapa (Mapbox)
 };
@@ -160,6 +176,21 @@ if (CONFIG.FULLCAM_LINK) {
   $("abrirVideo").href = CONFIG.FULLCAM_LINK;
 } else {
   $("abrirVideo").style.display = "none";
+}
+
+// ---------- enquadramento do vídeo ----------
+function enquadrar(z, x, y, p) {
+  $("video").style.aspectRatio = p;
+  const f = $("video").querySelector("iframe");
+  if (f) f.style.transform = `translate(${x}%, ${y}%) scale(${z})`;
+  if ($("ajTxt")) $("ajTxt").textContent = `zoom ${z} · horizontal ${x} · vertical ${y} · formato ${p}`;
+}
+enquadrar(CONFIG.VIDEO_ZOOM, CONFIG.VIDEO_X, CONFIG.VIDEO_Y, CONFIG.VIDEO_FORMATO);
+if (location.hash === "#ajuste") {
+  $("ajuste").style.display = "block";
+  $("ajZ").value = CONFIG.VIDEO_ZOOM; $("ajX").value = CONFIG.VIDEO_X; $("ajY").value = CONFIG.VIDEO_Y; $("ajP").value = CONFIG.VIDEO_FORMATO;
+  const upd = () => enquadrar($("ajZ").value, $("ajX").value, $("ajY").value, $("ajP").value);
+  ["ajZ", "ajX", "ajY", "ajP"].forEach(id => $(id).addEventListener("input", upd));
 }
 
 // ---------- zonas de FC ----------
