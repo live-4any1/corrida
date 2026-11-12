@@ -28,6 +28,7 @@
   .topo-dir{display:flex;align-items:center;gap:8px}
   .olho{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:700;background:#1a2648;color:var(--texto);white-space:nowrap}
   .olho svg{width:15px;height:15px}
+  .olho .sep{opacity:.45;margin:0 1px}
   @keyframes pulso{0%{box-shadow:0 0 0 0 rgba(255,59,78,.7)}70%{box-shadow:0 0 0 9px rgba(255,59,78,0)}100%{box-shadow:0 0 0 0 rgba(255,59,78,0)}}
   .grid{display:grid;gap:12px}
   @media(min-width:900px){.grid.topo{grid-template-columns:1.35fr 1fr}}
@@ -105,7 +106,7 @@
         <span class="rot-cam">Câmera ao vivo</span>
         <span class="dica-cam">☝️ Ajuste a câmera</span>
         <div class="topo-dir">
-          <span class="olho" id="olho" title="Pessoas assistindo agora" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="espect">0</span></span>
+          <span class="olho" id="olho" title="Assistindo agora · Total de pessoas que já entraram" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="espect">0</span><span class="sep">·</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.8"/><path d="M16 14.2c3 .2 5.5 2.4 5.5 5.8"/></svg><span id="totalEsp">0</span></span>
           <span id="badge" class="badge"><span class="dot"></span><span id="badgeTxt">CONECTANDO…</span></span>
         </div>
       </div>
@@ -190,7 +191,8 @@ const CONFIG = {
   NOME: "Meia de Sampa · Equipe 4any1",
   PROVA_KM: 21.0975,                       // distância da prova em km (meia maratona)
   TEMPO_ALVO: "1:45:00",                   // seu tempo alvo (h:mm:ss)
-  CHAT_HORAS: 6,                           // mensagens do chat com mais de X horas somem e são apagadas                 // aparece no topo da página
+  CHAT_HORAS: 6,
+  EVENTO: "meia-de-sampa-2026",            // nome do evento: a contagem total de espectadores é separada por evento                           // mensagens do chat com mais de X horas somem e são apagadas                 // aparece no topo da página
   FIREBASE_URL: "https://garmin-81aab-default-rtdb.firebaseio.com",
   API_KEY: "AIzaSyCztX48uZXS_5ay7BeNDrF7dmqZnd96m6U",   // chave de API da Web (a mesma do Config.mc do relógio)
   FULLCAM_LINK: "https://cloud.fullcam.me/#/camera?watch=MTE2ODk0MQ==&period=bGl2ZQ==&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BsYXRmb3JtLmZ1bGxjYW0ubWUiLCJzdWIiOiI1OGYyNjRiZC1lOGZlLTQwYTMtYTk5Ny0yZDg2NTQ2N2E4NzMiLCJqaXQiOiIyZWI4YzNjNC03NmU3LTQ0N2YtYTlmMS0wYTIxMWIzYmFjNDgiLCJleHAiOjE3OTQ1MzMyMjIsInNjb3BlIjpbImNhbWVyYTpyZWFkIl19.UHMssbk8axYd-7H3KeH4EAHbcEUtIN3gEzu8QI-6Zaw",                        // link de compartilhamento do FullCam (entre as aspas)
@@ -402,7 +404,7 @@ $("chatForm").addEventListener("submit", ev => {
 // =====================================================================
 if (!DEMO) {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-  const { getDatabase, ref, onValue, onChildAdded, off, push, set, onDisconnect, update, query, limitToLast, serverTimestamp, orderByChild, endAt, limitToFirst, get, remove } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const { getDatabase, ref, onValue, onChildAdded, off, push, set, onDisconnect, update, query, limitToLast, serverTimestamp, orderByChild, endAt, limitToFirst, get, remove, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
   const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
   const app = initializeApp({ databaseURL: CONFIG.FIREBASE_URL, apiKey: CONFIG.API_KEY });
   const db = getDatabase(app);
@@ -411,6 +413,14 @@ if (!DEMO) {
   let meuUid = null;
   signInAnonymously(getAuth(app)).then(r => {
       meuUid = r.user.uid;
+      // registra o visitante uma única vez por evento (conta quem entrou, mesmo que saia depois)
+      const minhaVisita = ref(db, "visitas/" + CONFIG.EVENTO + "/" + meuUid);
+      get(minhaVisita).then(v => {
+        if (!v.exists()) return update(ref(db), {
+          ["visitas/" + CONFIG.EVENTO + "/" + meuUid]: serverTimestamp(),
+          ["estatisticas/" + CONFIG.EVENTO + "/unicos"]: increment(1)
+        });
+      }).catch(() => {});
       // limpeza automática: apaga mensagens mais antigas que CHAT_HORAS
       const limite = Date.now() - CONFIG.CHAT_HORAS * 3600000;
       get(query(ref(db, "chat"), orderByChild("t"), endAt(limite), limitToFirst(100)))
@@ -433,6 +443,7 @@ if (!DEMO) {
   onValue(ref(db, ".info/connected"), s => {
     if (s.val() === true) onDisconnect(eu).remove().then(() => set(eu, true)).catch(() => {});
   });
+  onValue(ref(db, "estatisticas/" + CONFIG.EVENTO + "/unicos"), s => { $("totalEsp").textContent = s.val() || 0; }, () => {});
   onValue(ref(db, "espectadores"), s => {
     $("espect").textContent = s.size;
     $("olho").style.display = "inline-flex";
@@ -463,7 +474,7 @@ if (!DEMO) {
   const centro = [-23.5874, -46.6576], R = 0.0065;
   const sim = { tempo: 0, dist: 0, ang: 0, fc: 128, km: 0, tKm: 0, somaFc: 0, n: 0 };
   novaCorrida(1);
-  $("espect").textContent = 37; $("olho").style.display = "inline-flex";
+  $("espect").textContent = 37; $("totalEsp").textContent = 152; $("olho").style.display = "inline-flex";
   [["Ana", "Vai Miguel!! 🔥"], ["Equipe 4any1", "Ritmo lindo, segura aí!"], ["Pedro", "Bora que falta pouco"]]
     .forEach(([nome, texto], i) => mostrarMsg({ nome, texto, t: Date.now() - (3 - i) * 60000 }));
   enviarMsg = (nome, texto) => { mostrarMsg({ nome, texto, t: Date.now() }); return Promise.resolve(); };
