@@ -125,7 +125,7 @@
 const CONFIG = {
   NOME: "Corrida ao vivo",                 // aparece no topo da página
   FIREBASE_URL: "https://garmin-81aab-default-rtdb.firebaseio.com",
-  FULLCAM_LINK: "",                        // link de compartilhamento do FullCam (entre as aspas)
+  FULLCAM_LINK: "https://cloud.fullcam.me/#/camera?watch=MTE2ODk0MQ==&period=bGl2ZQ==&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BsYXRmb3JtLmZ1bGxjYW0ubWUiLCJzdWIiOiI1OGYyNjRiZC1lOGZlLTQwYTMtYTk5Ny0yZDg2NTQ2N2E4NzMiLCJqaXQiOiIyZWI4YzNjNC03NmU3LTQ0N2YtYTlmMS0wYTIxMWIzYmFjNDgiLCJleHAiOjE3OTQ1MzMyMjIsInNjb3BlIjpbImNhbWVyYTpyZWFkIl19.UHMssbk8axYd-7H3KeH4EAHbcEUtIN3gEzu8QI-6Zaw",                        // link de compartilhamento do FullCam (entre as aspas)
   FC_MAXIMA: 190,                          // sua FC máxima, para colorir as zonas
   MAPBOX_TOKEN: "pk.eyJ1IjoibWlndWVsZHVyYW50ZSIsImEiOiJjbXZ4NW03YzEwMTQzMnhxYnl2d2Iyd2F6In0.wXIl0nNB6JybhoaQz_ohOg"  // chave pública do mapa (Mapbox)
 };
@@ -266,7 +266,13 @@ if (!DEMO) {
   onValue(ref(db, "live/atual"), snap => {
     const a = snap.val();
     if (!a) return;
-    if (a.id && a.id !== idAtual) {
+    if (a.status === "pronto") {
+      // app aberto, aguardando largada: limpa a corrida anterior da tela
+      if (idAtual !== "pronto") {
+        if (refPontos) { off(refPontos); off(refVoltas); refPontos = null; refVoltas = null; }
+        novaCorrida("pronto");
+      }
+    } else if (a.id && a.id !== idAtual) {
       if (refPontos) { off(refPontos); off(refVoltas); }
       novaCorrida(a.id);
       refPontos = ref(db, "live/corridas/" + a.id + "/pontos");
