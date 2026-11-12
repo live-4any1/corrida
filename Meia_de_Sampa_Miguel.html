@@ -25,6 +25,9 @@
   .badge.vivo .dot{animation:pulso 1.2s infinite}
   .badge.fraco{background:rgba(255,193,69,.15);color:var(--amarelo)}
   .badge.fim{background:rgba(54,211,153,.15);color:var(--verde)}
+  .topo-dir{display:flex;align-items:center;gap:8px}
+  .olho{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:700;background:#1a2648;color:var(--texto);white-space:nowrap}
+  .olho svg{width:15px;height:15px}
   @keyframes pulso{0%{box-shadow:0 0 0 0 rgba(255,59,78,.7)}70%{box-shadow:0 0 0 9px rgba(255,59,78,0)}100%{box-shadow:0 0 0 0 rgba(255,59,78,0)}}
   .grid{display:grid;gap:12px}
   @media(min-width:900px){.grid.topo{grid-template-columns:1.35fr 1fr}}
@@ -68,7 +71,10 @@
 
   <header>
     <h1 id="titulo">Corrida ao vivo<small id="subtitulo">Acompanhe em tempo real</small></h1>
-    <span id="badge" class="badge"><span class="dot"></span><span id="badgeTxt">CONECTANDO…</span></span>
+    <div class="topo-dir">
+      <span class="olho" id="olho" title="Pessoas assistindo agora" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="espect">0</span></span>
+      <span id="badge" class="badge"><span class="dot"></span><span id="badgeTxt">CONECTANDO…</span></span>
+    </div>
   </header>
 
   <div class="grid topo">
@@ -291,9 +297,19 @@ function novaCorrida(id) {
 // =====================================================================
 if (!DEMO) {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-  const { getDatabase, ref, onValue, onChildAdded, off } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const { getDatabase, ref, onValue, onChildAdded, off, push, set, onDisconnect } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
   const db = getDatabase(initializeApp({ databaseURL: CONFIG.FIREBASE_URL }));
   let refPontos = null, refVoltas = null;
+
+  // ---------- contador de espectadores ----------
+  const eu = push(ref(db, "espectadores"));
+  onValue(ref(db, ".info/connected"), s => {
+    if (s.val() === true) onDisconnect(eu).remove().then(() => set(eu, true)).catch(() => {});
+  });
+  onValue(ref(db, "espectadores"), s => {
+    $("espect").textContent = s.size;
+    $("olho").style.display = "inline-flex";
+  }, () => {});
 
   onValue(ref(db, "live/atual"), snap => {
     const a = snap.val();
@@ -320,6 +336,7 @@ if (!DEMO) {
   const centro = [-23.5874, -46.6576], R = 0.0065;
   const sim = { tempo: 0, dist: 0, ang: 0, fc: 128, km: 0, tKm: 0, somaFc: 0, n: 0 };
   novaCorrida(1);
+  $("espect").textContent = 37; $("olho").style.display = "inline-flex";
   setInterval(() => {
     const vel = 3.1 + Math.sin(sim.tempo / 90) * 0.35;           // m/s
     const passo = 8;                                               // 8 s simulados por segundo real
