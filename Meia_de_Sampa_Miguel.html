@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070f24">
+<title>Corrida ao vivo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --fundo:#070f24; --card:#0e1b3a; --borda:#1c2d57; --texto:#e8eefc; --suave:#8a9bc4;
+    --vivo:#ff3b4e; --laranja:#ff8a3d; --verde:#36d399; --amarelo:#ffc145;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--fundo);color:var(--texto);font-family:Inter,system-ui,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  h1{font-size:18px;margin:0;font-weight:800;letter-spacing:.3px}
+  h1 small{display:block;font-weight:400;color:var(--suave);font-size:12px;margin-top:2px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.6px;background:#1a2648;color:var(--suave);white-space:nowrap}
+  .badge .dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+  .badge.vivo{background:rgba(255,59,78,.15);color:var(--vivo)}
+  .badge.vivo .dot{animation:pulso 1.2s infinite}
+  .badge.fraco{background:rgba(255,193,69,.15);color:var(--amarelo)}
+  .badge.fim{background:rgba(54,211,153,.15);color:var(--verde)}
+  .topo-dir{display:flex;align-items:center;gap:8px}
+  .olho{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:700;background:#1a2648;color:var(--texto);white-space:nowrap}
+  .olho svg{width:15px;height:15px}
+  .olho .sep{opacity:.45;margin:0 1px}
+  @keyframes pulso{0%{box-shadow:0 0 0 0 rgba(255,59,78,.7)}70%{box-shadow:0 0 0 9px rgba(255,59,78,0)}100%{box-shadow:0 0 0 0 rgba(255,59,78,0)}}
+  .grid{display:grid;gap:12px}
+  @media(min-width:900px){.grid.topo{grid-template-columns:1.35fr 1fr}}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:16px;overflow:hidden}
+  .video{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden}
+  #ajuste{display:none;padding:10px 12px;font-size:12px;color:var(--suave);border-top:1px solid var(--borda)}
+  #ajuste label{display:flex;align-items:center;gap:8px;margin:6px 0}
+  #ajuste input{flex:1}
+  #ajuste code{color:var(--amarelo);font-size:13px}
+  .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;transform-origin:50% 50%}
+  .video .vazio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--suave);font-size:14px;text-align:center;padding:20px}
+  .video-acoes{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:var(--suave)}
+  .dica-cam{color:var(--amarelo);font-weight:600;white-space:nowrap}
+  @media(max-width:420px){.video-acoes{font-size:11px;padding:8px 10px;gap:6px}.video-acoes .olho,.video-acoes .badge{padding:6px 8px;font-size:11px}}
+  .video-acoes .topo-dir{margin-left:auto}
+  .btn{display:inline-block;background:#1d2c58;color:var(--texto);text-decoration:none;border:0;border-radius:10px;padding:7px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--borda)}
+  .stat{background:var(--card);padding:8px 12px}
+  .stat .rot{font-size:10px;color:var(--suave);font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+  .stat .val{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:19px;margin-top:2px;line-height:1.1}
+  .stat .val small{font-size:11px;color:var(--suave);font-weight:500;margin-left:3px}
+  .stat.fc{grid-column:span 3;display:flex;align-items:center;justify-content:space-between}
+  .stat.fc .val{font-size:32px;color:var(--vivo)}
+  .coracao{display:inline-block;animation:bate 1s infinite}
+  @keyframes bate{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}}
+  .zonas{display:flex;gap:4px;margin-top:8px}
+  .zonas span{width:22px;height:8px;border-radius:3px;background:#22305c}
+  .zonas span.on{background:var(--z)}
+  #mapa{height:340px;background:#0b142c}
+  @media(min-width:900px){#mapa{height:420px}}
+  .card h2{font-size:13px;margin:0;padding:12px 14px;color:var(--suave);letter-spacing:.8px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+  table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:14px}
+  th,td{padding:9px 14px;text-align:left;border-top:1px solid var(--borda)}
+  th{font-family:Inter,sans-serif;font-size:11px;color:var(--suave);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+  td.bar{width:40%}
+  .barra{height:8px;border-radius:4px;background:var(--cor,var(--laranja))}
+  .stat.meta{background:#101f44}
+  .stat.meta .rot{color:#9fb4ea}
+  .delta{font:700 11px "JetBrains Mono",monospace;margin-top:3px}
+  .meta-barra{height:4px;border-radius:2px;background:#22305c;margin-top:5px;overflow:hidden}
+  .meta-barra i{display:block;height:100%;width:0;background:var(--cor,#22305c);transition:width .6s}
+  .legenda{display:flex;flex-wrap:wrap;gap:10px;padding:8px 14px 12px;font-size:11px;color:var(--suave);border-top:1px solid var(--borda)}
+  .legenda span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+  .rodape{color:var(--suave);font-size:12px;text-align:center;padding:16px 0 30px}
+  .corredor{width:18px;height:18px;border-radius:50%;background:var(--laranja);border:3px solid #fff;box-shadow:0 0 0 6px rgba(255,138,61,.3),0 0 18px rgba(255,138,61,.8)}
+  .leaflet-container{font-family:Inter,sans-serif}
+  #chatLista{height:260px;overflow-y:auto;padding:24px 14px 10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 40px);mask-image:linear-gradient(to bottom,transparent 0,#000 40px)}
+  #chatLista::before{content:"";flex:1}
+  .msg.nova{animation:entra .35s ease-out}
+  @keyframes entra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .msg{font-size:14px;line-height:1.35;word-wrap:break-word}
+  .msg b{color:var(--laranja);font-weight:700;margin-right:6px}
+  .msg time{color:var(--suave);font-size:11px;margin-left:6px}
+  .chat-vazio{color:var(--suave);font-size:13px;padding:8px 0}
+  .chat-form{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--borda);flex-wrap:wrap}
+  .chat-form input{background:#0a1430;border:1px solid var(--borda);color:var(--texto);border-radius:10px;padding:9px 11px;font:14px Inter,sans-serif;min-width:0}
+  #chatNome{width:110px}
+  #chatTexto{flex:1}
+  .chat-form button{background:var(--laranja);color:#1a0e05;border:0;border-radius:10px;padding:9px 14px;font:700 14px Inter,sans-serif;cursor:pointer}
+  .chat-form button:disabled{opacity:.5}
+  #chatAviso{width:100%;font-size:12px;color:var(--amarelo);min-height:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1 id="titulo">Corrida ao vivo<small id="subtitulo">Acompanhe ao vivo</small></h1>
+  </header>
+
+  <div class="grid topo">
+    <div class="card">
+      <div class="video" id="video"><div class="vazio" id="videoVazio">Vídeo ainda não configurado</div></div>
+      <div class="video-acoes">
+        <span class="rot-cam">Câmera ao vivo</span>
+        <span class="dica-cam">☝️ Ajuste a câmera</span>
+        <div class="topo-dir">
+          <span class="olho" id="olho" title="Assistindo agora · Total de pessoas que já entraram" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="espect">0</span><span class="sep">·</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.8"/><path d="M16 14.2c3 .2 5.5 2.4 5.5 5.8"/></svg><span id="totalEsp">0</span></span>
+          <span id="badge" class="badge"><span class="dot"></span><span id="badgeTxt">CONECTANDO…</span></span>
+        </div>
+      </div>
+      <div id="ajuste">
+        <b>Ajuste do vídeo</b> — mexa até o vídeo ficar centralizado:
+        <label>Zoom <input type="range" id="ajZ" min="1" max="3" step="0.05"></label>
+        <label>Horizontal <input type="range" id="ajX" min="-60" max="60" step="1"></label>
+        <label>Vertical <input type="range" id="ajY" min="-60" max="60" step="1"></label>
+        <label>Formato <select id="ajP"><option>16/9</option><option>4/3</option><option>1/1</option><option>9/16</option></select></label>
+        Me mande estes números: <code id="ajTxt"></code>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stats">
+        <div class="stat fc">
+          <div>
+            <div class="rot">Frequência cardíaca</div>
+            <div class="val"><span class="coracao">♥</span> <span id="fc">--</span><small>bpm</small></div>
+            <div class="zonas" id="zonas"></div>
+          </div>
+          <div style="text-align:right">
+            <div class="rot">Média / Máx</div>
+            <div class="val" style="font-size:16px"><span id="fcMedia">--</span> / <span id="fcMax">--</span></div>
+          </div>
+        </div>
+        <div class="stat"><div class="rot">Tempo</div><div class="val" id="tempo">0:00</div></div>
+        <div class="stat"><div class="rot">Distância</div><div class="val"><span id="dist">0,00</span><small>km</small></div></div>
+        <div class="stat meta"><div class="rot">Meta</div><div class="val" id="alvoTempo">--</div></div>
+        <div class="stat"><div class="rot">Ritmo atual</div><div class="val"><span id="ritmo">--:--</span><small>/km</small></div></div>
+        <div class="stat"><div class="rot">Ritmo médio</div><div class="val"><span id="ritmoMedio">--:--</span><small>/km</small></div></div>
+        <div class="stat meta"><div class="rot">Pace alvo</div><div class="val"><span id="alvoPace">--:--</span><small>/km</small></div></div>
+        <div class="stat"><div class="rot">Cadência</div><div class="val"><span id="cad">--</span><small>ppm</small></div></div>
+        <div class="stat"><div class="rot">Subida</div><div class="val"><span id="subida">0</span><small>m</small></div></div>
+        <div class="stat meta"><div class="rot">Previsão</div><div class="val" id="previsao">--</div><div class="delta" id="delta"></div><div class="meta-barra"><i id="metaBarra"></i></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+
+    <div class="card">
+      <h2>Parciais por km</h2>
+      <table>
+        <thead><tr><th>Km</th><th>Ritmo</th><th>FC</th><th></th></tr></thead>
+        <tbody id="voltas"><tr><td colspan="4" style="color:var(--suave)">Nenhum km completo ainda</td></tr></tbody>
+      </table>
+      <div class="legenda">
+        <span style="--c:#5b8cff">Mais rápido que a meta</span>
+        <span style="--c:#36d399">Na meta</span>
+        <span style="--c:#ffc145">Um pouco lento</span>
+        <span style="--c:#ff3b4e">Lento</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Percurso <button class="btn" id="centralizar">Seguir corredor</button></h2>
+      <div id="mapa"></div>
+    </div>
+
+    <div class="card">
+      <h2>Torcida ao vivo</h2>
+      <div id="chatLista"><div class="chat-vazio">Seja o primeiro a mandar uma mensagem!</div></div>
+      <form class="chat-form" id="chatForm" autocomplete="off">
+        <input id="chatNome" maxlength="20" placeholder="Seu nome">
+        <input id="chatTexto" maxlength="200" placeholder="Mande uma força...">
+        <button id="chatBtn" type="submit">Enviar</button>
+        <div id="chatAviso"></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="rodape" id="rodape">—</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+// =====================================================================
+//  CONFIGURAÇÃO — edite só estas linhas
+// =====================================================================
+const CONFIG = {
+  NOME: "Meia de Sampa · Equipe 4any1",
+  PROVA_KM: 21.0975,                       // distância da prova em km (meia maratona)
+  TEMPO_ALVO: "1:50:46",                   // seu tempo alvo (h:mm:ss)
+  CHAT_HORAS: 6,
+  EVENTO: "meia-de-sampa-2026",            // nome do evento: a contagem total de espectadores é separada por evento                           // mensagens do chat com mais de X horas somem e são apagadas                 // aparece no topo da página
+  FIREBASE_URL: "https://garmin-81aab-default-rtdb.firebaseio.com",
+  API_KEY: "AIzaSyCztX48uZXS_5ay7BeNDrF7dmqZnd96m6U",   // chave de API da Web (a mesma do Config.mc do relógio)
+  FULLCAM_LINK: "https://cloud.fullcam.me/#/camera?watch=MTE2ODk0MQ==&period=bGl2ZQ==&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BsYXRmb3JtLmZ1bGxjYW0ubWUiLCJzdWIiOiI1OGYyNjRiZC1lOGZlLTQwYTMtYTk5Ny0yZDg2NTQ2N2E4NzMiLCJqaXQiOiIyZWI4YzNjNC03NmU3LTQ0N2YtYTlmMS0wYTIxMWIzYmFjNDgiLCJleHAiOjE3OTQ1MzMyMjIsInNjb3BlIjpbImNhbWVyYTpyZWFkIl19.UHMssbk8axYd-7H3KeH4EAHbcEUtIN3gEzu8QI-6Zaw",                        // link de compartilhamento do FullCam (entre as aspas)
+  VIDEO_ZOOM: 1.13,                          // ajuste do vídeo (abra a página com #ajuste no fim do link)
+  VIDEO_X: 0,
+  VIDEO_Y: 3,
+  VIDEO_FORMATO: "16/9",
+  FC_MAXIMA: 190,                          // sua FC máxima, para colorir as zonas
+  MAPBOX_TOKEN: "pk.eyJ1IjoibWlndWVsZHVyYW50ZSIsImEiOiJjbXZ4NW03YzEwMTQzMnhxYnl2d2Iyd2F6In0.wXIl0nNB6JybhoaQz_ohOg"  // chave pública do mapa (Mapbox)
+};
+// =====================================================================
+
+const $ = id => document.getElementById(id);
+const DEMO = location.hash === "#demo" || CONFIG.FIREBASE_URL.includes("COLE-AQUI");
+
+// ---------- formatação ----------
+const ritmoDe = v => {
+  if (!v || v < 0.5) return "--:--";
+  const s = Math.round(1000 / v);
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+};
+const tempoDe = seg => {
+  seg = Math.max(0, Math.floor(seg || 0));
+  const h = Math.floor(seg / 3600), m = Math.floor(seg % 3600 / 60), s = seg % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0");
+};
+const kmDe = m => ((m || 0) / 1000).toFixed(2).replace(".", ",");
+
+// ---------- meta (tempo e pace alvo) ----------
+const segDe = txt => String(txt).split(":").reduce((acc, n) => acc * 60 + Number(n), 0);
+const ALVO_SEG = segDe(CONFIG.TEMPO_ALVO);
+const PACE_ALVO = ALVO_SEG / CONFIG.PROVA_KM;                      // segundos por km
+const paceTxt = sKm => Math.floor(sKm / 60) + ":" + String(Math.round(sKm % 60)).padStart(2, "0");
+// cor conforme o pace comparado com a meta
+function corPace(sKm) {
+  const d = (sKm - PACE_ALVO) / PACE_ALVO;
+  return d <= -0.03 ? "#5b8cff" : d <= 0.02 ? "#36d399" : d <= 0.06 ? "#ffc145" : "#ff3b4e";
+}
+$("alvoTempo").textContent = tempoDe(ALVO_SEG);
+$("alvoPace").textContent = paceTxt(PACE_ALVO);
+function atualizarPrevisao(tempoSeg, distM) {
+  if (!distM || distM < 300 || !tempoSeg) { $("previsao").textContent = "--"; $("delta").textContent = ""; return; }
+  const paceMedio = tempoSeg / (distM / 1000);
+  const prev = paceMedio * CONFIG.PROVA_KM;
+  const dif = Math.round(prev - ALVO_SEG);
+  const cor = corPace(paceMedio);
+  $("previsao").textContent = tempoDe(prev);
+  $("previsao").style.color = cor;
+  $("delta").textContent = (dif > 0 ? "+" : dif < 0 ? "−" : "") + tempoDe(Math.abs(dif)) + (dif > 0 ? " atrasado" : dif < 0 ? " adiantado" : " na meta");
+  $("delta").style.color = cor;
+  $("metaBarra").style.setProperty("--cor", cor);
+  $("metaBarra").style.width = Math.min(100, Math.round(100 * distM / 1000 / CONFIG.PROVA_KM)) + "%";
+}
+
+// ---------- topo e vídeo ----------
+$("titulo").firstChild.nodeValue = CONFIG.NOME;
+document.title = CONFIG.NOME;
+if (CONFIG.FULLCAM_LINK) {
+  $("videoVazio").textContent = "Carregando vídeo…";
+  const f = document.createElement("iframe");
+  f.src = CONFIG.FULLCAM_LINK;
+  f.allow = "autoplay; fullscreen; picture-in-picture";
+  f.allowFullscreen = true;
+  $("video").appendChild(f);
+}
+
+// ---------- enquadramento do vídeo ----------
+function enquadrar(z, x, y, p) {
+  $("video").style.aspectRatio = p;
+  const f = $("video").querySelector("iframe");
+  if (f) f.style.transform = `translate(${x}%, ${y}%) scale(${z})`;
+  if ($("ajTxt")) $("ajTxt").textContent = `zoom ${z} · horizontal ${x} · vertical ${y} · formato ${p}`;
+}
+enquadrar(CONFIG.VIDEO_ZOOM, CONFIG.VIDEO_X, CONFIG.VIDEO_Y, CONFIG.VIDEO_FORMATO);
+if (location.hash === "#ajuste") {
+  $("ajuste").style.display = "block";
+  $("ajZ").value = CONFIG.VIDEO_ZOOM; $("ajX").value = CONFIG.VIDEO_X; $("ajY").value = CONFIG.VIDEO_Y; $("ajP").value = CONFIG.VIDEO_FORMATO;
+  const upd = () => enquadrar($("ajZ").value, $("ajX").value, $("ajY").value, $("ajP").value);
+  ["ajZ", "ajX", "ajY", "ajP"].forEach(id => $(id).addEventListener("input", upd));
+}
+
+// ---------- zonas de FC ----------
+const CORES_Z = ["#5b8cff", "#36d399", "#ffc145", "#ff8a3d", "#ff3b4e"];
+CORES_Z.forEach(c => { const s = document.createElement("span"); s.style.setProperty("--z", c); $("zonas").appendChild(s); });
+function zona(fc) {
+  const p = fc / CONFIG.FC_MAXIMA;
+  return p < .6 ? 1 : p < .7 ? 2 : p < .8 ? 3 : p < .9 ? 4 : 5;
+}
+
+// ---------- mapa ----------
+const mapa = L.map("mapa", { zoomControl: true, attributionControl: true }).setView([-23.55, -46.63], 13);
+L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/512/{z}/{x}/{y}@2x?access_token=" + CONFIG.MAPBOX_TOKEN, {
+  maxZoom: 19, tileSize: 512, zoomOffset: -1,
+  attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(mapa);
+const trilha = L.polyline([], { color: "#ff8a3d", weight: 5, opacity: .9 }).addTo(mapa);
+const marcador = L.marker([-23.55, -46.63], { icon: L.divIcon({ className: "", html: '<div class="corredor"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }) });
+let seguir = true, primeiroPonto = true;
+mapa.on("dragstart", () => { seguir = false; $("centralizar").style.opacity = 1; });
+$("centralizar").onclick = () => { seguir = true; const p = marcador.getLatLng(); mapa.setView(p, Math.max(mapa.getZoom(), 15)); };
+
+function moverCorredor(lat, lon) {
+  if (lat == null || lon == null) return;
+  if (!mapa.hasLayer(marcador)) marcador.addTo(mapa);
+  marcador.setLatLng([lat, lon]);
+  if (primeiroPonto) { mapa.setView([lat, lon], 15); primeiroPonto = false; }
+  else if (seguir) mapa.panTo([lat, lon], { animate: true });
+}
+function addPonto(p) {
+  if (!Array.isArray(p)) return;
+  trilha.addLatLng([p[0], p[1]]);
+}
+
+// ---------- parciais ----------
+let voltas = {};
+function addVolta(chave, v) {
+  voltas[chave] = v;
+  const lista = Object.values(voltas).sort((a, b) => b.km - a.km);
+  const maisRapida = Math.min(...lista.map(x => x.tempo));
+  $("voltas").innerHTML = lista.map(x => {
+    const larg = Math.max(15, Math.round(100 * maisRapida / x.tempo));
+    const cor = corPace(x.tempo);
+    return `<tr><td>${x.km}</td><td style="color:${cor}">${ritmoDe(1000 / x.tempo)}</td><td>${x.fc ?? "--"}</td>` +
+           `<td class="bar"><div class="barra" style="width:${larg}%;--cor:${cor}"></div></td></tr>`;
+  }).join("");
+}
+
+// ---------- dados atuais ----------
+let atual = null, recebidoEm = 0, idAtual = null;
+function renderAtual(a) {
+  atual = a; recebidoEm = Date.now();
+  $("fc").textContent = a.fc ?? "--";
+  $("fcMedia").textContent = a.fcMedia ?? "--";
+  $("fcMax").textContent = a.fcMax ?? "--";
+  $("dist").textContent = kmDe(a.dist);
+  $("ritmo").textContent = ritmoDe(a.vel);
+  $("ritmoMedio").textContent = ritmoDe(a.velMedia);
+  $("cad").textContent = a.cad ?? "--";
+  $("subida").textContent = Math.round(a.subida || 0);
+  atualizarPrevisao(a.tempo, a.dist);
+  const z = a.fc ? zona(a.fc) : 0;
+  [...$("zonas").children].forEach((s, i) => s.classList.toggle("on", i < z));
+  moverCorredor(a.lat, a.lon);
+  tick();
+}
+
+// relógio da página: o tempo continua andando entre um envio e outro
+function tick() {
+  if (!atual) return;
+  const idade = Math.round(Date.now() / 1000 - (atual.t || 0));
+  let extra = 0;
+  if (atual.status === "correndo") extra = Math.min(Math.max(idade, 0), 15);
+  $("tempo").textContent = tempoDe((atual.tempo || 0) + extra);
+
+  const b = $("badge"), t = $("badgeTxt");
+  b.className = "badge";
+  if (atual.status === "correndo" && idade < 30) { b.classList.add("vivo"); t.textContent = "AO VIVO"; }
+  else if (atual.status === "correndo") { b.classList.add("fraco"); t.textContent = "SINAL FRACO"; }
+  else if (atual.status === "pausado") { b.classList.add("fraco"); t.textContent = "PAUSADO"; }
+  else if (atual.status === "finalizado") { b.classList.add("fim"); t.textContent = "FINALIZADA"; }
+  else { t.textContent = "AGUARDANDO LARGADA"; }
+
+  $("rodape").textContent = (DEMO ? "MODO DEMONSTRAÇÃO · " : "") +
+    "Último dado do relógio há " + (idade < 0 ? 0 : idade) + " s";
+}
+setInterval(tick, 1000);
+
+function novaCorrida(id) {
+  idAtual = id;
+  trilha.setLatLngs([]);
+  voltas = {};
+  $("voltas").innerHTML = '<tr><td colspan="4" style="color:var(--suave)">Nenhum km completo ainda</td></tr>';
+  primeiroPonto = true;
+}
+
+// ---------- chat: tela ----------
+let enviarMsg = null;
+function mostrarMsg(m) {
+  if (!m || !m.texto) return;
+  if (typeof m.t === "number" && Date.now() - m.t > CONFIG.CHAT_HORAS * 3600000) return;
+  const lista = $("chatLista");
+  const vazio = lista.querySelector(".chat-vazio"); if (vazio) vazio.remove();
+  const embaixo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
+  const d = document.createElement("div"); d.className = "msg nova";
+  const b = document.createElement("b"); b.textContent = m.nome || "Anônimo";
+  const sp = document.createElement("span"); sp.textContent = m.texto;
+  const tm = document.createElement("time");
+  if (typeof m.t === "number") tm.textContent = new Date(m.t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  d.append(b, sp, tm); lista.appendChild(d);
+  while (lista.querySelectorAll(".msg").length > 60) lista.querySelector(".msg").remove();
+  if (embaixo) lista.scrollTop = lista.scrollHeight;
+}
+try { $("chatNome").value = localStorage.getItem("chatNome") || ""; } catch (e) {}
+$("chatForm").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const nome = $("chatNome").value.trim().slice(0, 20), texto = $("chatTexto").value.trim().slice(0, 200);
+  if (!nome) { $("chatAviso").textContent = "Escreva seu nome."; $("chatNome").focus(); return; }
+  if (!texto || !enviarMsg) return;
+  try { localStorage.setItem("chatNome", nome); } catch (e) {}
+  $("chatBtn").disabled = true; $("chatAviso").textContent = "";
+  enviarMsg(nome, texto)
+    .then(() => { $("chatTexto").value = ""; })
+    .catch(() => { $("chatAviso").textContent = "Calma! Espere alguns segundos entre uma mensagem e outra."; })
+    .finally(() => setTimeout(() => { $("chatBtn").disabled = false; }, 3000));
+});
+
+// =====================================================================
+//  FONTE DOS DADOS: Firebase (ao vivo) ou simulação (modo demo)
+// =====================================================================
+if (!DEMO) {
+  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+  const { getDatabase, ref, onValue, onChildAdded, off, push, set, onDisconnect, update, query, limitToLast, serverTimestamp, orderByChild, endAt, limitToFirst, get, remove, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+  const app = initializeApp({ databaseURL: CONFIG.FIREBASE_URL, apiKey: CONFIG.API_KEY });
+  const db = getDatabase(app);
+
+  // ---------- chat da torcida ----------
+  let meuUid = null;
+  signInAnonymously(getAuth(app)).then(r => {
+      meuUid = r.user.uid;
+      // registra o visitante uma única vez por evento (conta quem entrou, mesmo que saia depois)
+      const minhaVisita = ref(db, "visitas/" + CONFIG.EVENTO + "/" + meuUid);
+      get(minhaVisita).then(v => {
+        if (!v.exists()) return update(ref(db), {
+          ["visitas/" + CONFIG.EVENTO + "/" + meuUid]: serverTimestamp(),
+          ["estatisticas/" + CONFIG.EVENTO + "/unicos"]: increment(1)
+        });
+      }).catch(() => {});
+      // limpeza automática: apaga mensagens mais antigas que CHAT_HORAS
+      const limite = Date.now() - CONFIG.CHAT_HORAS * 3600000;
+      get(query(ref(db, "chat"), orderByChild("t"), endAt(limite), limitToFirst(100)))
+        .then(snap => snap.forEach(m => { remove(m.ref).catch(() => {}); })).catch(() => {});
+    })
+    .catch(e => { $("chatAviso").textContent = "Chat indisponível no momento (" + (e && e.code ? e.code : "erro") + ")."; $("chatBtn").disabled = true; });
+  onChildAdded(query(ref(db, "chat"), limitToLast(50)), s => mostrarMsg(s.val()));
+  enviarMsg = (nome, texto) => {
+    if (!meuUid) return Promise.reject(new Error("sem login"));
+    const k = push(ref(db, "chat")).key;
+    return update(ref(db), {
+      ["chat/" + k]: { nome, texto, uid: meuUid, t: serverTimestamp() },
+      ["chatTempo/" + meuUid]: serverTimestamp()
+    });
+  };
+  let refPontos = null, refVoltas = null;
+
+  // ---------- contador de espectadores ----------
+  const eu = push(ref(db, "espectadores"));
+  onValue(ref(db, ".info/connected"), s => {
+    if (s.val() === true) onDisconnect(eu).remove().then(() => set(eu, true)).catch(() => {});
+  });
+  onValue(ref(db, "estatisticas/" + CONFIG.EVENTO + "/unicos"), s => { $("totalEsp").textContent = s.val() || 0; }, () => {});
+  onValue(ref(db, "espectadores"), s => {
+    $("espect").textContent = s.size;
+    $("olho").style.display = "inline-flex";
+  }, () => {});
+
+  onValue(ref(db, "live/atual"), snap => {
+    const a = snap.val();
+    if (!a) return;
+    if (a.status === "pronto") {
+      // app aberto, aguardando largada: limpa a corrida anterior da tela
+      if (idAtual !== "pronto") {
+        if (refPontos) { off(refPontos); off(refVoltas); refPontos = null; refVoltas = null; }
+        novaCorrida("pronto");
+      }
+    } else if (a.id && a.id !== idAtual) {
+      if (refPontos) { off(refPontos); off(refVoltas); }
+      novaCorrida(a.id);
+      refPontos = ref(db, "live/corridas/" + a.id + "/pontos");
+      refVoltas = ref(db, "live/corridas/" + a.id + "/voltas");
+      onChildAdded(refPontos, s => addPonto(s.val()));
+      onChildAdded(refVoltas, s => addVolta(s.key, s.val()));
+    }
+    renderAtual(a);
+  }, erro => { $("badgeTxt").textContent = "ERRO DE CONEXÃO"; console.error(erro); });
+
+} else {
+  // Simulação: uma volta em torno do Parque Ibirapuera, 8x mais rápida que o real
+  const centro = [-23.5874, -46.6576], R = 0.0065;
+  const sim = { tempo: 0, dist: 0, ang: 0, fc: 128, km: 0, tKm: 0, somaFc: 0, n: 0 };
+  novaCorrida(1);
+  $("espect").textContent = 37; $("totalEsp").textContent = 152; $("olho").style.display = "inline-flex";
+  [["Ana", "Vai Miguel!! 🔥"], ["Equipe 4any1", "Ritmo lindo, segura aí!"], ["Pedro", "Bora que falta pouco"]]
+    .forEach(([nome, texto], i) => mostrarMsg({ nome, texto, t: Date.now() - (3 - i) * 60000 }));
+  enviarMsg = (nome, texto) => { mostrarMsg({ nome, texto, t: Date.now() }); return Promise.resolve(); };
+  setInterval(() => {
+    const vel = 3.1 + Math.sin(sim.tempo / 90) * 0.35;           // m/s
+    const passo = 8;                                               // 8 s simulados por segundo real
+    sim.tempo += passo; sim.dist += vel * passo;
+    sim.ang += (vel * passo) / (R * 111000 * 1.15);
+    sim.fc = Math.round(Math.min(178, 140 + sim.tempo / 40 + Math.sin(sim.tempo / 25) * 6));
+    sim.somaFc += sim.fc; sim.n++;
+    const lat = centro[0] + R * Math.sin(sim.ang), lon = centro[1] + R * 1.15 * Math.cos(sim.ang);
+    if (Math.floor(sim.dist / 1000) > sim.km) {
+      sim.km++;
+      addVolta("k" + sim.km, { km: sim.km, tempo: sim.tempo - sim.tKm, fc: Math.round(sim.somaFc / sim.n) });
+      sim.tKm = sim.tempo; sim.somaFc = 0; sim.n = 0;
+    }
+    addPonto([lat, lon]);
+    renderAtual({
+      status: "correndo", t: Date.now() / 1000, tempo: sim.tempo, dist: sim.dist,
+      vel, velMedia: sim.dist / sim.tempo, fc: sim.fc, fcMedia: Math.round(sim.fc - 6), fcMax: Math.round(sim.fc + 4),
+      cad: 172 + Math.round(Math.sin(sim.tempo / 30) * 4), subida: sim.dist / 180, lat, lon
+    });
+  }, 1000);
+}
+</script>
+</body>
+</html>
