@@ -75,6 +75,8 @@
   .delta{font:700 11px "JetBrains Mono",monospace;margin-top:3px}
   .meta-barra{height:4px;border-radius:2px;background:#22305c;margin-top:5px;overflow:hidden}
   .meta-barra i{display:block;height:100%;width:0;background:var(--cor,#22305c);transition:width .6s}
+  .passos{font:600 12px "JetBrains Mono",monospace;letter-spacing:0;text-transform:none;color:var(--suave)}
+  .passos b{color:var(--texto);font-size:15px}
   .progresso{padding:0 14px 12px}
   .prog-txt{display:flex;justify-content:space-between;font:600 12px "JetBrains Mono",monospace;color:var(--suave);margin-bottom:6px}
   .prog-txt b{color:var(--texto)}
@@ -163,7 +165,7 @@
   <div class="grid" style="margin-top:12px">
 
     <div class="card">
-      <h2>Parciais por km</h2>
+      <h2>Parciais por km <span class="passos">👣 <b id="passos">--</b> passos</span></h2>
       <div class="progresso">
         <div class="prog-txt"><span><b id="progKm">0,0</b> de <span id="progTotal">21,1</span> km</span><b id="progPct">0%</b></div>
         <div class="prog-barra"><i id="progBarra"></i></div>
@@ -412,6 +414,8 @@ function renderAtual(a) {
   $("cal").textContent = cal != null ? Math.round(cal) : "--";
   $("velMedia").textContent = a.velMedia ? (a.velMedia * 3.6).toFixed(1).replace(".", ",") : "--";
   atualizarProgresso(a.dist);
+  const passos = a.passos ?? a.steps;
+  $("passos").textContent = passos != null ? Math.round(passos).toLocaleString("pt-BR") : "--";
   atualizarPrevisao(a.tempo, a.dist);
   const z = a.fc ? zona(a.fc) : 0;
   [...$("zonas").children].forEach((s, i) => s.classList.toggle("on", i < z));
@@ -575,7 +579,7 @@ if (!DEMO) {
     renderAtual({
       status: "correndo", t: Date.now() / 1000, tempo: sim.tempo, dist: sim.dist,
       vel, velMedia: sim.dist / sim.tempo, fc: sim.fc, fcMedia: Math.round(sim.fc - 6), fcMax: Math.round(sim.fc + 4),
-      cal: sim.dist / 1000 * 70, lat, lon
+      cal: sim.dist / 1000 * 70, passos: sim.tempo * 2.9, lat, lon
     });
   }, 1000);
 }
